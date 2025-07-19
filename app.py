@@ -120,13 +120,14 @@ def fill_cell(cell, value):
     p = cell.paragraphs[0]
     p.clear()
 
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+
     run = p.add_run(str(value).strip())
 
     # Устанавливаем шрифт Times New Roman 10
     run.font.name = 'Times New Roman'
     run.font.size = Pt(10)
     run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Times New Roman')
+    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
 
 
 @app.post("/generate_protocols/")

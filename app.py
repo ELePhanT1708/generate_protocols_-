@@ -232,7 +232,7 @@ async def generate_protocols(
         raise HTTPException(status_code=500, detail="Внутренняя ошибка сервера")
 
     finally:
-        if tmp_path and os.path.exists(tmp_path):
+        if save_path and os.path.exists(save_path):
             try:
                 os.unlink(tmp_path)
                 logger.info(f"Временный файл удален: {tmp_path}")

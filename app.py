@@ -136,19 +136,21 @@ async def generate_protocols(
     # Логируем начало обработки файла
     logger.info(f"Начало обработки файла: {file.filename}")
     try:
-        # Создаем временный файл для загруженного документа
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp_file:
-            tmp_path = file.filename
+        # Создаем полный путь для сохранения
+        save_path = file.filename
+
+        # Сохраняем файл
+        with open(save_path, "wb") as buffer:
             content = await file.read()
-            tmp_file.write(content)
-            logger.info(f"Временный файл создан: {tmp_path} (размер: {len(content)} байт)")
+            buffer.write(content)
+
         # Парсим данные
         logger.info("Парсинг данных из файла...")
-        rows = parse_applications(tmp_path)
+        rows = parse_applications(save_path)
         logger.info(f"Найдено {len(rows)} записей")
         grouped_data = group_by_program(rows)
         logger.info(f"Данные сгруппированы по программам: {list(grouped_data.keys())}")
-        app_number, org_name = extract_app_info(tmp_path)
+        app_number, org_name = extract_app_info(save_path)
         logger.info(f"Номер заявки: {app_number}, Организация: {org_name}")
         output_dir = tempfile.mkdtemp()
         logger.info(f"Выходная директория: {output_dir}")

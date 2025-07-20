@@ -217,7 +217,7 @@ async def generate_protocols(
                 list_attendance_table = list_attendance_template.tables[0]  # Первая таблица — целевая
 
                 for i, person in enumerate(people, start=1):
-                    cells = clone_row(table, template_row_idx, i)
+                    cells = clone_row(list_attendance_table, template_row_idx, i)
                     values = [
                         str(f"{i}."),
                         person['fio'],
@@ -230,7 +230,7 @@ async def generate_protocols(
                 # table._tbl.remove(table.rows[template_row_idx]._tr)
                 safe_org = re.sub(r'[^\w\s-]', '', org_name).strip().replace(' ', '_')
                 output_path = os.path.join(output_dir, f"Лист_Посещении_{app_number}_{safe_org}_Программа_{program}.docx")
-                doc.save(output_path)
+                list_attendance_template.save(output_path)
                 generated_files.append(output_path)
                 logger.info(f" ✅  Файл сохранен: {output_path}")
             except Exception as e:

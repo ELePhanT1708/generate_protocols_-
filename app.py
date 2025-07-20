@@ -57,6 +57,8 @@ TEMPLATES = {
     '5': "templates/one_row/00. В ШАБЛОН.docx",
 }
 
+TEMPLATE_LIST_ATTENDANCE = "templates/one_row/00. УП пустой.docx"
+
 
 def check_tables_in_file(doc):
     for idx, table in enumerate(doc.tables):
@@ -205,9 +207,34 @@ async def generate_protocols(
                 doc.save(output_path)
                 generated_files.append(output_path)
                 logger.info(f" ✅  Файл сохранен: {output_path}")
+
+                ## list attendance
+                list_attendance_template = Document(TEMPLATE_LIST_ATTENDANCE)
+                old_group_name = "______________________"
+                new_line = f"{app_number}_{safe_org}_Программа_{program}"
+                replace_text_with_formatting(list_attendance_template, old_group_name, new_line, highlight_substring=new_line)
+
+                list_attendance_table = list_attendance_template.tables[0]  # Первая таблица — целевая
+
+                for i, person in enumerate(people, start=1):
+                    cells = clone_row(table, template_row_idx, i)
+                    values = [
+                        str(f"{i}."),
+                        person['fio'],
+                    ]
+
+                    for cell, value in zip(cells, values):
+                        fill_cell(cell, value)
+
+                # (необязательно) удалить строку-образец:
+                # table._tbl.remove(table.rows[template_row_idx]._tr)
+                safe_org = re.sub(r'[^\w\s-]', '', org_name).strip().replace(' ', '_')
+                output_path = os.path.join(output_dir, f"Лист_Посещении_{app_number}_{safe_org}_Программа_{program}.docx")
+                doc.save(output_path)
+                generated_files.append(output_path)
+                logger.info(f" ✅  Файл сохранен: {output_path}")
             except Exception as e:
                 logger.error(f"Ошибка при обработке программы {program}: {str(e)}\n{traceback.format_exc()}")
-
         # Создаем ZIP-архив в памяти
         zip_buffer = io.BytesIO()
         with zipfile.ZipFile(zip_buffer, "a", zipfile.ZIP_DEFLATED, False) as zip_file:

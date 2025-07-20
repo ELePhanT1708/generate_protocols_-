@@ -215,7 +215,7 @@ async def generate_protocols(
                 replace_text_with_formatting(list_attendance_template, old_group_name, new_line, highlight_substring=new_line)
 
                 list_attendance_table = list_attendance_template.tables[0]  # Первая таблица — целевая
-                template_row_idx_attendance = 2
+                template_row_idx_attendance = 3
                 for i, person in enumerate(people, start=1):
                     cells = clone_row(list_attendance_table, template_row_idx_attendance, i)
                     values = [

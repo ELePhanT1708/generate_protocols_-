@@ -122,7 +122,6 @@ def fill_cell(cell, value):
     p = cell.paragraphs[0]
     p.clear()
 
-
     run = p.add_run(str(value).strip())
 
     # Устанавливаем шрифт Times New Roman 10
@@ -212,7 +211,8 @@ async def generate_protocols(
                 list_attendance_template = Document(TEMPLATE_LIST_ATTENDANCE)
                 old_group_name = "Группа ______________________"
                 new_line = f"Группа {app_number}_{safe_org}_Программа_{program}"
-                replace_text_with_formatting(list_attendance_template, old_group_name, new_line, highlight_substring=new_line)
+                replace_text_with_formatting(list_attendance_template, old_group_name, new_line,
+                                             highlight_substring=new_line)
 
                 list_attendance_table = list_attendance_template.tables[0]  # Первая таблица — целевая
                 template_row_idx_attendance = 3
@@ -229,7 +229,8 @@ async def generate_protocols(
                 # (необязательно) удалить строку-образец:
                 # table._tbl.remove(table.rows[template_row_idx]._tr)
                 safe_org = re.sub(r'[^\w\s-]', '', org_name).strip().replace(' ', '_')
-                output_path = os.path.join(output_dir, f"Лист_Посещении_{app_number}_{safe_org}_Программа_{program}.docx")
+                output_path = os.path.join(output_dir,
+                                           f"Лист_Посещении_{app_number}_{safe_org}_Программа_{program}.docx")
                 list_attendance_template.save(output_path)
                 generated_files.append(output_path)
                 logger.info(f" ✅  Файл сохранен: {output_path}")
@@ -244,6 +245,14 @@ async def generate_protocols(
 
         # Возвращаем ZIP-архив как ответ
         zip_buffer.seek(0)
+
+        ## Удаляем изначальный файл
+        if os.path.exists(save_path):  # Проверяем, существует ли файл
+            os.remove(save_path)  # Удаляем файл
+            logger.info(f"Файл {save_path} успешно удалён.")
+        else:
+            logger.info(f"Файл {save_path} не найден.")
+
         return Response(
             content=zip_buffer.getvalue(),
             media_type="application/zip",
@@ -267,6 +276,8 @@ async def generate_protocols(
             except Exception as e:
                 logger.error(f"Ошибка при удалении временного файла: {str(e)}")
 
+
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

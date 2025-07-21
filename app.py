@@ -50,7 +50,7 @@ OOO_TITLE = "Общество с ограниченной ответственн
 
 # Шаблоны для 5 программ
 TEMPLATES = {
-    '1': "templates/one_row/00. ПП Шаблон.docx",
+    '1': "templates/one_row/00. ПП Шаблон 1.docx",
     '2': "templates/one_row/00. СИЗ ШАБЛОН.docx",
     '3': "templates/one_row/00. А ШАБЛОН.docx",
     '4': "templates/one_row/00.Б ШАБЛОН.docx",
@@ -114,7 +114,7 @@ def clone_row(table, row_idx: int, i: int):
     return table.rows[-1].cells
 
 
-def fill_cell(cell, value):
+def fill_cell(cell, value, alignment='left'):
     """
     Чистая вставка текста без лишних переносов, с сохранением форматирования
     """
@@ -128,8 +128,10 @@ def fill_cell(cell, value):
     run.font.name = 'Times New Roman'
     run.font.size = Pt(10)
     run._element.rPr.rFonts.set(qn('w:eastAsia'), 'Times New Roman')
-    p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-
+    if alignment == 'left':
+        p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+    if alignment == 'right':
+        p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
 
 @app.post("/generate_protocols/")
 async def generate_protocols(
@@ -197,7 +199,7 @@ async def generate_protocols(
                     ]
 
                     for cell, value in zip(cells, values):
-                        fill_cell(cell, value)
+                        fill_cell(cell, value, 'right')
 
                 # (необязательно) удалить строку-образец:
                 # table._tbl.remove(table.rows[template_row_idx]._tr)
@@ -224,7 +226,7 @@ async def generate_protocols(
                     ]
 
                     for cell, value in zip(cells, values):
-                        fill_cell(cell, value)
+                        fill_cell(cell, value, 'left')
 
                 # (необязательно) удалить строку-образец:
                 # table._tbl.remove(table.rows[template_row_idx]._tr)

@@ -8,6 +8,8 @@ from docx.shared import Pt
 from docx.oxml.ns import qn
 from copy import deepcopy
 import re
+
+import sys
 import os
 from collections import defaultdict
 import tempfile
@@ -35,23 +37,30 @@ def setup_logging():
     )
 
 
+def resource_path(relative_path):
+    """Возвращает абсолютный путь к ресурсу, работает как при запуске из .py, так и из .exe"""
+    try:
+        base_path = sys._MEIPASS  # Временная папка PyInstaller
+    except Exception:
+        base_path = os.path.abspath(".")
+
+    return os.path.join(base_path, relative_path)
+
+
 setup_logging()
 logger = logging.getLogger(__name__)
 
-# Путь к исходной заявке
-SOURCE_DOC = "636. ООО КХ г. Дятьково.docx"
-OOO_TITLE = "Общество с ограниченной ответственностью «Коммунальное хозяйство г. Дятьково»"
 
 # Шаблоны для 5 программ
 TEMPLATES = {
-    '1': "templates/one_row/00. ПП Шаблон 1.docx",
-    '2': "templates/one_row/00. СИЗ ШАБЛОН.docx",
-    '3': "templates/one_row/00. А ШАБЛОН.docx",
-    '4': "templates/one_row/00.Б ШАБЛОН.docx",
-    '5': "templates/one_row/00. В ШАБЛОН.docx",
+    '1': resource_path("templates/one_row/00. ПП Шаблон.docx"),
+    '2': resource_path("templates/one_row/00. СИЗ ШАБЛОН.docx"),
+    '3': resource_path("templates/one_row/00. А ШАБЛОН.docx"),
+    '4': resource_path("templates/one_row/00.Б ШАБЛОН.docx"),
+    '5': resource_path("templates/one_row/00. В ШАБЛОН.docx"),
 }
 
-TEMPLATE_LIST_ATTENDANCE = "templates/one_row/00. УП пустой.docx"
+TEMPLATE_LIST_ATTENDANCE = resource_path("templates/one_row/00. УП пустой.docx")
 
 
 def check_tables_in_file(doc):
@@ -89,9 +98,24 @@ def parse_applications(path):
 # 2. Сгруппировать сотрудников по номерам программ
 def group_by_program(rows):
     program_dict = defaultdict(list)
+    added_to_program_5 = set()
+
     for row in rows:
         for program in row['programs']:
-            program_dict[program].append(row)
+            try:
+                prog_num = int(program)
+            except ValueError:
+                continue  # Пропускаем нечисловые значения
+
+            if prog_num > 5:
+                # Уникальный идентификатор сотрудника
+                identifier = f"{row['fio']}|{row['snils']}"
+                if identifier not in added_to_program_5:
+                    program_dict['5'].append(row)
+                    added_to_program_5.add(identifier)
+            else:
+                program_dict[str(prog_num)].append(row)
+
     return program_dict
 
 
@@ -126,12 +150,14 @@ def fill_cell(cell, value, alignment='left'):
         p.alignment = WD_ALIGN_PARAGRAPH.LEFT
     if alignment == 'right':
         p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    if alignment == 'center':
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
 
 # Импортируй здесь свои функции
 
 
-def generate_protocols_from_file(file_path: object, organization_name: object) -> object:
+def generate_protocols_from_file(file_path: object, organization_name: object, dogovor: object) -> object:
     try:
         logger.info(f"Начало обработки файла: {file_path}")
         save_path = file_path
@@ -148,8 +174,8 @@ def generate_protocols_from_file(file_path: object, organization_name: object) -
         logger.info(f"Найдено {len(rows)} записей")
         grouped_data = group_by_program(rows)
         logger.info(f"Данные сгруппированы по программам: {list(grouped_data.keys())}")
-        app_number, org_name = extract_app_info(save_path)
-        logger.info(f"Номер заявки: {app_number}, Организация: {org_name}")
+        logger.info(f"Данные сгруппированы по программам: {grouped_data}")
+        logger.info(f"Номер заявки: {dogovor}, Организация: {organization_name}")
         logger.info(f"Выходная директория: {output_dir}")
         generated_files = []
 
@@ -160,15 +186,13 @@ def generate_protocols_from_file(file_path: object, organization_name: object) -
 
                 if int(program) > 5:
                     doc = Document(TEMPLATES['5'])
-                    OLD_THEME = "«Обучение по безопасным методам и ..."  # Сократил
-                    NEW_THEME = mapping[program]
+
                     old_protocol_substring = mapping_protocol_name.get('5')
-                    new_line = old_protocol_substring.replace("_____", app_number)
+                    new_line = old_protocol_substring.replace("_____", dogovor)
                     replace_text_with_formatting(doc, old_protocol_substring, new_line, highlight_substring=new_line)
-                    replace_text_with_formatting(doc, OLD_THEME, NEW_THEME)
                 else:
                     old_protocol_substring = mapping_protocol_name.get(program)
-                    new_line = old_protocol_substring.replace("_____", app_number)
+                    new_line = old_protocol_substring.replace("_____", dogovor)
                     replace_text_with_formatting(doc, old_protocol_substring, new_line, highlight_substring=new_line)
 
                 table = doc.tables[1]
@@ -182,41 +206,57 @@ def generate_protocols_from_file(file_path: object, organization_name: object) -
                         "Согласно Приложению № 1 к настоящему протоколу", "", ""
                     ]
                     for cell, value in zip(cells, values):
-                        fill_cell(cell, value, 'right')
+                        fill_cell(cell, value, 'center')
 
-                safe_org = re.sub(r'[^\w\s-]', '', org_name).strip().replace(' ', '_')
-                output_path = os.path.join(output_dir, f"Протокол_{app_number}_{safe_org}_Программа_{program}.docx")
+                safe_org = re.sub(r'[^\w\s-]', '', organization_name).strip().replace(' ', '_')
+                output_path = os.path.join(output_dir, f"Протокол_{dogovor}_{safe_org}_Программа_{program}.docx")
                 doc.save(output_path)
                 generated_files.append(output_path)
                 logger.info(f"✅ Файл сохранен: {output_path}")
-
-                ## Лист посещений
-                list_attendance_template = Document(TEMPLATE_LIST_ATTENDANCE)
-                new_line = f"Группа {app_number}_{safe_org}_Программа_{program}"
-                replace_text_with_formatting(list_attendance_template, "Группа ______________________", new_line,
-                                             highlight_substring=new_line)
-
-                list_attendance_table = list_attendance_template.tables[0]
-                template_row_idx_attendance = 3
-
-                for i, person in enumerate(people, start=1):
-                    cells = clone_row(list_attendance_table, template_row_idx_attendance, i)
-                    values = [str(f"{i}."), person['fio']]
-                    for cell, value in zip(cells, values):
-                        fill_cell(cell, value, 'left')
-
-                output_path = os.path.join(output_dir,
-                                           f"Лист_Посещении_{app_number}_{safe_org}_Программа_{program}.docx")
-                list_attendance_template.save(output_path)
-                generated_files.append(output_path)
-                logger.info(f"✅ Лист посещения сохранен: {output_path}")
-
             except Exception as e:
                 logger.error(f"Ошибка при обработке программы {program}: {str(e)}\n{traceback.format_exc()}")
 
+        # ✅ Собираем уникальных сотрудников (по fio + snils)
+        unique_attendance = {}
+        for row in rows:
+            identifier = f"{row['fio']}|{row['snils']}"
+            if identifier not in unique_attendance:
+                unique_attendance[identifier] = row
+
+        # ✅ Готовим Лист посещения
+        logger.info(f'Уникальных сотрудников :{unique_attendance}')
+        try:
+            list_attendance_template = Document(TEMPLATE_LIST_ATTENDANCE)
+            new_line = f"Группа {dogovor}_{safe_org}"
+            replace_text_with_formatting(
+                list_attendance_template,
+                "Группа ______________________",
+                new_line,
+                highlight_substring=new_line
+            )
+
+            list_attendance_table = list_attendance_template.tables[0]
+            template_row_idx_attendance = 3
+
+            for i, person in enumerate(unique_attendance.values(), start=1):
+                cells = clone_row(list_attendance_table, template_row_idx_attendance, i)
+                values = [str(f"{i}."), person['fio']]
+                for cell, value in zip(cells, values):
+                    fill_cell(cell, value, 'left')
+
+            output_path = os.path.join(output_dir, f"Лист_Посещения_{dogovor}_{safe_org}.docx")
+            list_attendance_template.save(output_path)
+            generated_files.append(output_path)
+            logger.info(f"✅ Общий Лист посещения сохранен: {output_path}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании общего Листа посещения: {str(e)}\n{traceback.format_exc()}")
+
+
+
         # Архивируем
         # Указываем финальный путь архива
-        zip_filename = "protocols.zip"
+        zip_filename = f"protocols_{safe_org}.zip"
         zip_path = os.path.join(base_dir, zip_filename)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for file_path in generated_files:
@@ -243,12 +283,17 @@ def main_gui():
         messagebox.showwarning("Внимание", "Файл не выбран.")
         return
 
-    org_name = simpledialog.askstring("Организация", "Введите название организации:")
-    if not org_name:
+    organization_name = simpledialog.askstring("Организация", "Введите название организации:")
+    if not organization_name:
         messagebox.showwarning("Внимание", "Название организации не указано.")
         return
 
-    generate_protocols_from_file(file_path, org_name)
+    dogovor = simpledialog.askstring("Номер Договора", "Введите номер договора:")
+    if not dogovor:
+        messagebox.showwarning("Внимание", "Номер Договора не указан.")
+        return
+
+    generate_protocols_from_file(file_path, organization_name, dogovor)
 
 
 if __name__ == "__main__":

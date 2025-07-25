@@ -2,3 +2,6 @@ pyinstaller --onefile --noconsole --add-data "templates/one_row/00. ПП Шаб�
 
 
 pyinstaller --onefile --noconsole --add-data "./templates:templates" desktop_app.py
+
+
+pyinstaller --onefile --noconsole --add-data "templates;templates" desktop_app.py

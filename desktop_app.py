@@ -61,6 +61,7 @@ TEMPLATES = {
 }
 
 TEMPLATE_LIST_ATTENDANCE = resource_path("templates/one_row/00. УП пустой.docx")
+TEMPLATE_AGREEMENT = resource_path("templates/one_row/00. Шаблон.docx")
 
 
 def check_tables_in_file(doc):
@@ -206,7 +207,7 @@ def generate_protocols_from_file(file_path: object, organization_name: object, d
                         "Согласно Приложению № 1 к настоящему протоколу", "", ""
                     ]
                     for cell, value in zip(cells, values):
-                        fill_cell(cell, value, 'center')
+                        fill_cell(cell, value, 'right')
 
                 safe_org = re.sub(r'[^\w\s-]', '', organization_name).strip().replace(' ', '_')
                 output_path = os.path.join(output_dir, f"Протокол_{dogovor}_{safe_org}_Программа_{program}.docx")
@@ -252,11 +253,39 @@ def generate_protocols_from_file(file_path: object, organization_name: object, d
         except Exception as e:
             logger.error(f"Ошибка при создании общего Листа посещения: {str(e)}\n{traceback.format_exc()}")
 
+        # ✅ Готовим Согласия
+        logger.info(f'Уникальных сотрудников :{unique_attendance}')
+        try:
+            list_agreement_template = Document(TEMPLATE_AGREEMENT)
+            new_line = f"_________{safe_org}_________"
+            replace_text_with_formatting(
+                list_agreement_template,
+                "__________________________________________________________________,",
+                new_line,
+                highlight_substring=new_line
+            )
+
+            list_agreement_table = list_agreement_template.tables[0]
+            template_row_idx_attendance = 1
+
+            for i, person in enumerate(unique_attendance.values(), start=1):
+                cells = clone_row(list_agreement_table, template_row_idx_attendance, i)
+                values = [str(f"{i}."), person['fio']]
+                for cell, value in zip(cells, values):
+                    fill_cell(cell, value, 'left')
+
+            output_path = os.path.join(output_dir, f"Согласие_{dogovor}_{safe_org}.docx")
+            list_agreement_template.save(output_path)
+            generated_files.append(output_path)
+            logger.info(f"✅ Общее согласие сохранено: {output_path}")
+
+        except Exception as e:
+            logger.error(f"Ошибка при создании общего Листа согласии: {str(e)}\n{traceback.format_exc()}")
 
 
         # Архивируем
         # Указываем финальный путь архива
-        zip_filename = f"protocols_{safe_org}.zip"
+        zip_filename = f"{dogovor}.zip"
         zip_path = os.path.join(base_dir, zip_filename)
         with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zipf:
             for file_path in generated_files:

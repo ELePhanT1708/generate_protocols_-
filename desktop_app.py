@@ -204,7 +204,7 @@ def generate_protocols_from_file(file_path: object, organization_name: object, d
                     values = [
                         str(f"{i}."), person['fio'], person['role'],
                         organization_name, "удовлетворительно",
-                        "Согласно Приложению № 1 к настоящему протоколу", "", ""
+                        "Согласно Приложению № 1 к настоящему протоколу", ""
                     ]
                     for cell, value in zip(cells, values):
                         fill_cell(cell, value, 'right')
@@ -264,6 +264,14 @@ def generate_protocols_from_file(file_path: object, organization_name: object, d
                 new_line,
                 highlight_substring=new_line
             )
+            new_line = f"№ {dogovor}"
+            replace_text_with_formatting(
+                list_agreement_template,
+                "№_____",
+                new_line,
+                highlight_substring=new_line
+            )
+
 
             list_agreement_table = list_agreement_template.tables[0]
             template_row_idx_attendance = 1

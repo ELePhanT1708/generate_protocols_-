@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environment
+venv/
+
+# PyInstaller
+build/
+dist/
+*.spec
+!desktop_app.spec
+
+# Logs
+logs/
+
+# IDE
+.idea/
+
+# Generated output (docx files in root, zip archives)
+*.zip
+Протокол_*.docx
+Лист_*.docx
+Согласие_*.docx
+output.docx
+
+# Uploaded source files (processed by the app)
+[0-9]*.docx
+
+# OS
+Thumbs.db
+desktop.ini
